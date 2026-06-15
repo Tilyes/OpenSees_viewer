@@ -1,0 +1,31 @@
+# Build
+build/
+build-release/
+out/
+cmake-build-*/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Compiled
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# SPIR-V compiled shaders
+shaders/*.spv
+
+# vcpkg
+vcpkg_installed/
+
+# OS
+Thumbs.db
+.DS_Store
