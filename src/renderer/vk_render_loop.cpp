@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_render_loop.cpp
+// 作用: Renderloop 实现：每帧 8 步。同步对象：image_available_(GPU内部等画布), render_finished_(GPU等画完), in_flight_(CPU等GPU)
+// =============================================================================
+
 #include "vk_render_loop.h"
 #include "vk_context.h"
 #include <spdlog/spdlog.h>

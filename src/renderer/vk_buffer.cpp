@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_buffer.cpp
+// 作用: GpuBuffer 实现：vkCreateBuffer → vkAllocateMemory → vkBindBufferMemory → vkMapMemory 等
+// =============================================================================
+
 #include "vk_buffer.h"
 #include "vk_context.h"
 #include <spdlog/spdlog.h>

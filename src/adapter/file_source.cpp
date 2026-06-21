@@ -1,3 +1,9 @@
+// =============================================================================
+// 文件: adapter/file_source.cpp
+// 作用: FileSource 实现：TCL 解析器，识别 node/element 命令生成 Mesh。调用链: App (菜单) → FileSource::load → Model
+// 依赖: viewer_core (Mesh, Model, Field)
+// =============================================================================
+
 #include "file_source.h"
 #include <spdlog/spdlog.h>
 #include <fstream>

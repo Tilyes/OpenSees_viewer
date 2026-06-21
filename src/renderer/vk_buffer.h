@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_buffer.h
+// 作用: GpuBuffer：GPU 显存封装。create(分配VkBuffer+VkMemory) → upload(memcpy到显存) → destroy(释放)
+// =============================================================================
+
 #pragma once
 
 #include <vulkan/vulkan.h>

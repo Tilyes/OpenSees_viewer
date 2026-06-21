@@ -1,3 +1,9 @@
+// =============================================================================
+// 文件: renderer/vulkan/vk_swapchain.h
+// 作用: SwapchainCtx：双缓冲画布系统，管理 Swapchain + ImageViews + Framebuffers。窗口 resize 时重建
+// 被调用: VkContext (vk_context.h) 持有这三个子模块
+// =============================================================================
+
 #pragma once
 
 #include <vulkan/vulkan.h>

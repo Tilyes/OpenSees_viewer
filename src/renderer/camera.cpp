@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/camera.cpp
+// 作用: Camera 实现：orbit 改 yaw/pitch，zoom 改 distance，view_matrix 用 lookAt 计算，projection 用 perspective
+// =============================================================================
+
 #include "camera.h"
 
 namespace viewer {

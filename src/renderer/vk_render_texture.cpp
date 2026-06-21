@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_render_texture.cpp
+// 作用: RenderTexture 实现：vkCreateImage → vkCreateFramebuffer → ImGui_ImplVulkan_AddTexture 注册
+// =============================================================================
+
 #include "vk_render_texture.h"
 #include <imgui_impl_vulkan.h>
 #include <spdlog/spdlog.h>

@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_mesh_renderer.h
+// 作用: VkMeshRenderer：3D 内容绘制。持有线(点)管线 + 顶点(点)buffer + UBO + DescriptorSet。upload_mesh() 把 Mesh 转 GPU 顶点，render() 每帧画
+// =============================================================================
+
 #pragma once
 
 #include <vulkan/vulkan.h>

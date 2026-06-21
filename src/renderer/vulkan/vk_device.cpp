@@ -1,3 +1,9 @@
+// =============================================================================
+// 文件: renderer/vulkan/vk_device.cpp
+// 作用: DeviceCtx 实现：首选独显、创建 Device、开启 VK_KHR_swapchain 扩展
+// 被调用: VkContext (vk_context.h) 持有这三个子模块
+// =============================================================================
+
 #include "vk_device.h"
 #include <spdlog/spdlog.h>
 

@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_imgui.cpp
+// 作用: VkImGui 实现：init 配置 Win11 风格 → ImGui_ImplGlfw/Vulkan_Init。new_frame/render 转发给 ImGui 后端
+// =============================================================================
+
 #include "vk_imgui.h"
 #include "vk_context.h"
 

@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_context.h
+// 作用: VkContext：Vulkan 子系统协调者。持有 InstanceCtx + DeviceCtx + SwapchainCtx + RenderPass + CommandPool。对外暴露统一 getter
+// =============================================================================
+
 #pragma once
 
 #include <vulkan/vulkan.h>

@@ -1,3 +1,9 @@
+// =============================================================================
+// 文件: renderer/vulkan/vk_swapchain.cpp
+// 作用: SwapchainCtx 实现：两阶段 init（phase1=swapchain+views, phase2=framebuffers）。查询 GPU 能力后选最优格式
+// 被调用: VkContext (vk_context.h) 持有这三个子模块
+// =============================================================================
+
 #include "vk_swapchain.h"
 #include "vulkan/vk_device.h" // QueueFamilyIndices
 #include <GLFW/glfw3.h>

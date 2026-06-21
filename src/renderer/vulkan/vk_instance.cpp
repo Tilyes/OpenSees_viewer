@@ -1,3 +1,9 @@
+// =============================================================================
+// 文件: renderer/vulkan/vk_instance.cpp
+// 作用: InstanceCtx 实现：vkCreateInstance → vkCreateSurface，Debug 模式开验证层
+// 被调用: VkContext (vk_context.h) 持有这三个子模块
+// =============================================================================
+
 #include "vk_instance.h"
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>

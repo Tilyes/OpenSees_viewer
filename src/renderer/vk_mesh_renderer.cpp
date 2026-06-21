@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_mesh_renderer.cpp
+// 作用: VkMeshRenderer 实现：init 建管线+buffer+descriptor。upload_mesh 从 Mesh 提取节点和线。render 每帧上传 UBO → 绑数据 → 画线 → 画点
+// =============================================================================
+
 #include "vk_mesh_renderer.h"
 #include "vk_context.h"
 #include <spdlog/spdlog.h>

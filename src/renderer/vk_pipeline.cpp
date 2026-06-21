@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_pipeline.cpp
+// 作用: Pipeline 实现：加载 SPIR-V → 创建 ShaderModule → 填 7 个 CreateInfo → vkCreateGraphicsPipelines。descriptor_set_layout 对应 mesh.vert 的 binding=0 UBO
+// =============================================================================
+
 #include "vk_pipeline.h"
 #include "vk_context.h"
 #include "../utils/file_io.h"

@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: ui/app.h
+// 作用: App：总管理器。持有 VkContext, RenderLoop, VkMeshRenderer, Viewport, Inspector, Timeline。init/run/main_loop/shutdown 编排整个应用生命周期。PIMPL 模式隐藏 Vulkan 头文件
+// =============================================================================
+
 #pragma once
 
 #include <string>

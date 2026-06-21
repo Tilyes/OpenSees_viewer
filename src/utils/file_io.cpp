@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: utils/file_io.cpp
+// 作用: file_io 实现：ifstream 读文件 → vector<char> 或 string
+// =============================================================================
+
 #include "file_io.h"
 #include <fstream>
 #include <spdlog/spdlog.h>

@@ -1,3 +1,8 @@
+// =============================================================================
+// 文件: renderer/vk_render_texture.h
+// 作用: RenderTexture：离屏渲染目标。创建 Image→Framebuffer→Sampler，注册为 ImGui 纹理。Viewport 用它做 3D→纹理→ImGui::Image 显示
+// =============================================================================
+
 #pragma once
 
 #include <vulkan/vulkan.h>

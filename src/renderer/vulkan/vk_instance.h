@@ -1,3 +1,9 @@
+// =============================================================================
+// 文件: renderer/vulkan/vk_instance.h
+// 作用: InstanceCtx：Vulkan Instance + Window Surface，连接 Vulkan 和操作系统窗口
+// 被调用: VkContext (vk_context.h) 持有这三个子模块
+// =============================================================================
+
 #pragma once
 
 #include <vulkan/vulkan.h>
