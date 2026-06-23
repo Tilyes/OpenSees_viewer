@@ -1,245 +1,184 @@
 # OpenSees Viewer 项目文档
 
-## 项目架构
+> 基于 C++20 + Vulkan 的 OpenSees 有限元模型 3D 可视化工具
+
+## 当前功能状态
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| Vulkan 渲染框架 | ✅ | Instance → Device → Swapchain → RenderPass → CommandPool 全链路 |
+| 帧循环 | ✅ | 双缓冲 swapchain + fence/semaphore 同步 |
+| ImGui 界面 | ✅ | Win11 Fluent 风格，菜单栏 + 面板固定布局 |
+| 3D 相机 | ✅ | 鼠标左键旋转、滚轮缩放、自动适配模型包围盒 |
+| 离屏渲染 | ✅ | 3D → 离屏纹理 → ImGui::Image 显示在 Viewport 面板 |
+| TCL 文件解析 | ✅ | 识别 node/element 命令（forceBeamColumn/truss/zeroLength） |
+| 杆系结构显示 | ✅ | LINE_LIST 画线 + POINT_LIST 画节点，彩虹渐变色 |
+| set 变量替换 | ⏳ | 简单 set 支持，[expr...] 待支持 |
+| 文件对话框 | ⏳ | 当前硬编码路径，待加原生文件选择 |
+| 时间步动画 | ⏳ | Timeline 面板已就绪，待接入 Field 数据 |
+| 应力云图 | ⏳ | contour.frag 已写好，待接入 |
+
+---
+
+## 项目文件结构
 
 ```
-main.cpp
-  └── App (总管，PIMPL 模式)
-       ├── Camera ──────── 3D 相机，鼠标拖拽 → view/proj 矩阵
-       │
-       ├── VkContext ───── Vulkan 子系统总协调
-       │     ├── InstanceCtx ── Instance + Surface（连接 Vulkan 和窗口）
-       │     ├── DeviceCtx ──── GPU 选择 + 逻辑设备 + 队列
-       │     └── SwapchainCtx ─ 画布轮替系统
-       │     ├── RenderPass ── 画布规格（颜色格式、清屏规则）
-       │     └── CommandPool ─ 命令缓冲区内存池
-       │
-       ├── RenderLoop ──── 每帧 8 步流水线
-       │     ├── 1 个 fence (CPU 等 GPU)
-       │     ├── 1 个 semaphore (swapchain → 渲染)
-       │     ├── N 个 semaphore (渲染 → 展示)
-       │     └── 1 个 cmd buffer
-       │
-       ├── VkMeshRenderer ─ 3D 内容（三角形）
-       │     ├── Pipeline ──── 画笔规则（shader + 顶点格式 + UBO 布局）
-       │     ├── GpuBuffer ─── 顶点 buffer + UBO buffer
-       │     └── DescriptorSet ─ UBO ↔ shader binding=0
-       │
-       ├── VkImGui ─────── ImGui ↔ Vulkan
-       ├── Viewport ────── ImGui 面板
-       ├── Inspector ───── ImGui 面板
-       └── Timeline ────── ImGui 面板
-
-数据层（待接入）:
-  Mesh, Field, Model, ElementRegistry, DataSource, FileSource, OpenSeesSource
-```
-
-## 一帧执行流程
-
-```
-main_loop():
-  ① 鼠标输入 → camera.orbit(yaw, pitch)
-  ② imgui new_frame + 三个面板 render()      ← CPU 攒 UI 数据
-  ③ render_loop.begin_frame()                ← 等 fence → 拿 swapchain 图 → 清屏
-  ④ camera 算 UBO → upload → bind → draw     ← 画三角形
-  ⑤ imgui.render(cmd)                        ← 画 UI
-  ⑥ render_loop.end_frame()                  ← 提交 + 展示
+OpenSees_viewer/
+├── CMakeLists.txt              ← 顶层 CMake
+├── CMakePresets.json           ← vcpkg + 编译预设
+├── vcpkg.json                  ← 依赖清单
+├── .gitignore
+│
+├── shaders/                    ← GLSL 着色器（编译成 .spv）
+│   ├── mesh.vert / mesh.frag   ← 点 shader（带光照 + UBO）
+│   ├── line.vert / line.frag   ← 线 shader（亮色彩虹，无光照）
+│   ├── simple.vert/.frag       ← 无 UBO 测试用 shader（备用）
+│   ├── contour.frag            ← 应力云图 shader（备用）
+│   └── wireframe.geom          ← 几何着色器画粗线（备用）
+│
+├── src/
+│   ├── main.cpp                ← 程序入口
+│   │
+│   ├── core/                   ← 数据模型层（不依赖渲染）
+│   │   ├── mesh.h/.cpp         ← 节点 + 单元拓扑
+│   │   ├── field.h/.cpp        ← 结果场（位移/应力/应变）
+│   │   ├── model.h/.cpp        ← Mesh + 时间步列表
+│   │   └── element_registry.h/.cpp ← 单元类型注册表
+│   │
+│   ├── adapter/                ← 数据源层
+│   │   ├── data_source.h       ← DataSource 抽象接口
+│   │   ├── file_source.h/.cpp  ← TCL 文件解析器
+│   │   └── opensees_source.h/.cpp ← OpenSees 直连（stub）
+│   │
+│   ├── renderer/               ← Vulkan 渲染层
+│   │   ├── vulkan/             ← Vulkan 底层（通常不需要看）
+│   │   │   ├── vk_instance.h/.cpp  ← Instance + Surface
+│   │   │   ├── vk_device.h/.cpp    ← GPU 选择 + Device + Queue
+│   │   │   └── vk_swapchain.h/.cpp ← Swapchain 双缓冲系统
+│   │   ├── vk_context.h/.cpp   ← 协调上述三者 + RenderPass + CommandPool
+│   │   ├── vk_render_loop.h/.cpp ← 每帧流水线（fence/semaphore/cmd）
+│   │   ├── vk_pipeline.h/.cpp  ← 画笔规则（shader + 顶点格式 + UBO）
+│   │   ├── vk_buffer.h/.cpp    ← GPU 显存封装
+│   │   ├── vk_mesh_renderer.h/.cpp ← 3D 内容绘制（线/点）
+│   │   ├── vk_render_texture.h/.cpp ← 离屏渲染目标（ImGui 可显示）
+│   │   ├── vk_imgui.h/.cpp     ← ImGui ↔ Vulkan 接线员
+│   │   └── camera.h/.cpp       ← 3D 相机
+│   │
+│   ├── ui/                     ← ImGui 面板层
+│   │   ├── app.h/.cpp          ← App 总管（PIMPL 模式）
+│   │   ├── viewport.h/.cpp     ← 3D 视口面板
+│   │   ├── inspector.h/.cpp    ← 属性面板
+│   │   └── timeline.h/.cpp     ← 时间轴面板
+│   │
+│   └── utils/
+│       ├── log.h               ← spdlog 封装
+│       └── file_io.h/.cpp      ← 文件读写（shader 加载等）
+│
+├── example/                    ← 示例 TCL 模型
+│   └── exam1/simple.tcl        ← 简化版 2D 杆系模型
+│
+└── docs/
+    └── refactor_vkcontext.md   ← VkContext 重构记录
 ```
 
 ---
 
-## Vulkan 渲染全过程
-
-### 第一阶段：搭工厂（init，只做一次）
-
-#### 1. 创建窗口
-```
-glfwInit() → glfwCreateWindow(1600, 900)
-```
-向 Windows 申请窗口。`GLFW_NO_API` = 不用 OpenGL，自己用 Vulkan。GPU 还没碰。
-
-#### 2. Instance + Surface
-```
-vkCreateInstance()          → 告诉驱动"我是 OpenSees_viewer，用 Vulkan 1.0"
-glfwCreateWindowSurface()   → 把窗口和 Vulkan 连起来
-```
-驱动知道你了，但还没选 GPU。
-
-#### 3. 选 GPU + Device
-```
-vkEnumeratePhysicalDevices()           → 列出所有显卡
-vkGetPhysicalDeviceProperties()        → 看每块卡型号
-选独显 RTX 5070 → physical_device_
-vkCreateDevice()                       → device_（和 GPU 的通信通道）
-vkGetDeviceQueue()                     → graphics_queue_, present_queue_
-```
-和 RTX 5070 建立了连接。两个队列：graphics 管画图，present 管展示。
-
-#### 4. Swapchain
-```
-vkGetPhysicalDeviceSurfaceCapabilitiesKHR()  → 支持的分辨率范围
-vkGetPhysicalDeviceSurfaceFormatsKHR()       → 支持的像素格式
-vkGetPhysicalDeviceSurfacePresentModesKHR()  → 支持的刷新模式
-vkCreateSwapchainKHR()                       → swapchain_
-拿图片 → swapchain_images_
-每张图 → ImageView
-每个 ImageView 配 Framebuffer
-```
-创建"双缓冲画布"：两张 1600×900 的画布，一张屏幕显示、一张 GPU 后台画，画完交换。
-
-#### 5. RenderPass + CommandPool
-```
-vkCreateRenderPass()     → 画布规格：SRGB 8bit、画前清黑、画后可展示
-vkCreateCommandPool()    → 命令缓冲区的 malloc
-```
-RenderPass = 画布规格书。CommandPool = 分配"指令纸"的内存池。GPU 听不懂 C++，只认 CommandBuffer（指令纸）。
-
-#### 6. RenderLoop（同步对象 + 命令缓冲区）
-```
-vkAllocateCommandBuffers() → cmd_（指令纸）
-vkCreateSemaphore() → image_available_（GPU 内部灯："画布就绪"）
-vkCreateSemaphore() → render_finished_（GPU 内部灯："画完了"）
-vkCreateFence() → in_flight_（CPU-GPU 围栏："GPU 还在忙"）
-```
-- cmd_ = 一张纸，把绘图指令写上去，GPU 读它干活
-- semaphore = GPU 内部排队用的信号灯
-- fence = CPU 和 GPU 之间："GPU 画完没？没画完我等着"
-
-#### 7. Pipeline（画笔规则）
-```
-加载 shader 文件（SPIR-V 二进制）
-填 VkPipelineVertexInputStateCreateInfo    → 顶点格式：vec3 pos + vec3 normal + float
-填 VkPipelineInputAssemblyStateCreateInfo  → 三个顶点拼三角形
-填 VkPipelineRasterizationStateCreateInfo  → 填充三角形、不剔除
-填 VkPipelineMultisampleStateCreateInfo    → 不开抗锯齿
-填 VkPipelineColorBlendStateCreateInfo     → 直接输出颜色
-vkCreateDescriptorSetLayout()              → UBO 布局：binding=0, uniform buffer
-vkCreatePipelineLayout()                   → 带上 descriptor set layout
-vkCreateGraphicsPipelines()                → 组合成最终画笔 → pipeline_
-```
-告诉 GPU：顶点格式是这样、shader 代码是这些、UBO 在 binding=0。
-
-#### 8. VkMeshRenderer（画什么）
-```
-vertex_buffer_.create()       → 显存分配一块地，装三角形 3 个顶点
-vertex_buffer_.upload()       → CPU 数据拷进显存
-ubo_buffer_.create()          → 显存分配一块地，装 model/view/proj 矩阵
-vkCreateDescriptorPool()      → descriptor set 内存池
-vkAllocateDescriptorSets()    → 从池里拿一个 descriptor set
-vkUpdateDescriptorSets()      → "binding=0 指向 ubo_buffer"
-```
-CPU 数据 → GPU 显存。Descriptor = 告诉 shader "binding=0 读的是这个 buffer"。
-
-#### 9. VkImGui
-```
-ImGui_ImplGlfw_InitForVulkan()    → 鼠标键盘走 GLFW
-ImGui_ImplVulkan_Init()           → ImGui 用你的 Vulkan 环境画
-```
-ImGui 是 UI 数据生成器，不是渲染器。它把按钮、面板拆成三角形，通过 Vulkan 画。
-
----
-
-### 第二阶段：每帧流水线（main_loop，每 16ms 一次）
-
-#### CPU 阶段：攒 UI 数据
-```
-vk_imgui->new_frame()       → "开始记账"
-viewport.render()           → 记：视口面板
-inspector.render()          → 记：属性面板
-timeline.render()           → 记：时间轴
-```
-没碰 GPU。只是在内存里攒 UI 数据。
-
-#### GPU 阶段步 1：等 + 拿纸
-```
-vkWaitForFences(in_flight_)          → CPU 等"GPU 上帧画完没？"
-vkAcquireNextImageKHR()              → 拿一张空画布
-vkResetCommandBuffer(cmd_)           → 清空指令纸
-vkBeginCommandBuffer(cmd_)           → 开始写指令
-vkCmdBeginRenderPass(cmd_)           → "清屏，画在这张图上"
-```
-
-#### GPU 阶段步 2：画三角形
-```
-ubo_buffer_.upload(新矩阵)            → 相机矩阵拷进显存
-vkCmdSetViewport(cmd)                → "画在 1600×900 区域"
-vkCmdSetScissor(cmd)                 → "区域外不画"
-vkCmdBindVertexBuffers(cmd)          → "读这块显存里的顶点"
-vkCmdBindDescriptorSets(cmd)         → "读 binding=0 的 UBO"
-vkCmdBindPipeline(cmd)               → "用这支笔"
-vkCmdDraw(cmd, 3)                    → "画 3 个顶点！"
-```
-指令纸写满了，GPU 还没执行，只是录好了。
-
-#### GPU 阶段步 3：画 UI
-```
-ImGui::Render()                      → 把"记账"转成三角形
-ImGui_ImplVulkan_RenderDrawData(cmd) → 画到同一张指令纸上
-```
-
-#### GPU 阶段步 4：提交 + 展示
-```
-vkCmdEndRenderPass(cmd_)                  → "画完了"
-vkEndCommandBuffer(cmd_)                  → "指令写完了"
-vkQueueSubmit(graphics_queue, cmd_)       → 交指令纸给 GPU 执行
-   等 image_available_ 信号              → GPU 内部等画布就绪
-   干完发 render_finished_ 信号          → 通知展示队列
-   干完发 in_flight_ 信号                → 通知 CPU
-vkQueuePresentKHR(present_queue, ...)    → 把画完的画布展示到屏幕
-```
-
-### GPU 执行时内部发生了什么
+## 当前渲染流程（三阶段）
 
 ```
-① 顶点 shader（mesh.vert 跑 3 次）：
-   每个顶点坐标 × UBO 矩阵 = 屏幕坐标
+main_loop() 每帧执行：
 
-② 光栅化器（GPU 固定硬件）：
-   3 个屏幕坐标围成的三角形 → 切成几千个像素
-
-③ 片段 shader（mesh.frag 跑几千次）：
-   每个像素算颜色
-
-④ 输出合并：
-   颜色写进 swapchain image
-
-⑤ Present：
-   swapchain image → 显示器
+┌─ 第一阶段：CPU 攒 UI 数据 ─────────────────────┐
+│ vk_imgui->new_frame()                         │
+│ 菜单栏 render                                  │
+│ Viewport.render_ui()  ← 只是占位，3D 画面等下画 │
+│ Inspector.render()                            │
+│ Timeline.render()                             │
+│ 鼠标 → camera.orbit/zoom                       │
+└───────────────────────────────────────────────┘
+              ↓
+┌─ 第二阶段：离屏渲染 3D ────────────────────────┐
+│ vp_cmd 命令缓冲区：                              │
+│   vkCmdBeginRenderPass(viewport 的离屏 framebuffer) │
+│   ubo = {model, view, proj}                   │
+│   mesh_renderer->render(cmd, extent, ubo)      │
+│     → 绑顶点 → 绑 UBO → 画线 → 画点              │
+│   vkCmdEndRenderPass                           │
+│   布局转换（COLOR_ATTACHMENT → SHADER_READ）     │
+│ vkQueueSubmit → GPU 离线渲染                    │
+└───────────────────────────────────────────────┘
+              ↓
+┌─ 第三阶段：swapchain 渲染 UI ───────────────────┐
+│ render_loop->begin_frame (拿 swapchain 图)       │
+│   在 Viewport 面板里：ImGui::Image(离屏纹理)       │
+│ vk_imgui->render(cmd) ← 画所有 UI 面板          │
+│ render_loop->end_frame (提交 + 展示)             │
+└───────────────────────────────────────────────┘
 ```
 
 ---
 
-## 核心概念速查
+## 核心组件职责
 
-| 概念 | 一句话 | 在哪 |
-|------|--------|------|
-| Instance | "我是谁" | vk_instance.cpp |
-| Surface | Vulkan 和窗口的桥梁 | vk_instance.cpp |
-| PhysicalDevice | 物理显卡 | vk_device.cpp |
-| Device | 和显卡的通信通道 | vk_device.cpp |
-| Queue | 给 GPU 派活的管道 | vk_device.cpp |
-| Swapchain | 双缓冲画布系统 | vk_swapchain.cpp |
-| RenderPass | 画布规格（格式、清屏） | vk_context.cpp |
-| CommandPool | 指令纸的 malloc | vk_context.cpp |
-| CommandBuffer | 指令纸，记录 vkCmd* 命令 | vk_render_loop.cpp |
-| Fence | CPU ← GPU："画完没？" | vk_render_loop.cpp |
-| Semaphore | GPU 内部排队信号灯 | vk_render_loop.cpp |
-| Pipeline | 画笔：shader+顶点格式+UBO布局 | vk_pipeline.cpp |
-| GpuBuffer | GPU 显存封装 | vk_buffer.cpp |
-| DescriptorSet | "binding=0 指向这个 buffer" | vk_mesh_renderer.cpp |
-| UBO | 所有顶点共享的全局变量（相机矩阵） | vk_mesh_renderer.cpp |
-| Shader | 跑在 GPU 上的小程序 | shaders/*.vert/.frag |
-| ImGui | UI 数据生成器（不管渲染） | vk_imgui.cpp |
+| 组件 | 文件 | 一句话 |
+|------|------|--------|
+| App | ui/app.cpp | 总管所有模块的创建、帧循环编排、销毁 |
+| VkContext | renderer/vk_context.cpp | 协调 Vulkan 子模块，对外暴露 getter |
+| InstanceCtx | renderer/vulkan/vk_instance.cpp | Instance + Surface，连接 Vulkan 和 OS |
+| DeviceCtx | renderer/vulkan/vk_device.cpp | 选 GPU，建 Device，获取 Queue |
+| SwapchainCtx | renderer/vulkan/vk_swapchain.cpp | 双缓冲画布，窗口 resize 时重建 |
+| Renderloop | renderer/vk_render_loop.cpp | 帧流水线：等 fence → 拿图 → submit → present |
+| Pipeline | renderer/vk_pipeline.cpp | 画笔规则：shader + 顶点格式 + UBO 布局（创建时可指定拓扑） |
+| GpuBuffer | renderer/vk_buffer.cpp | GPU 显存：create(分配) → upload(拷贝) → destroy(释放) |
+| VkMeshRenderer | renderer/vk_mesh_renderer.cpp | 3D 内容：upload_mesh 把 Mesh 转 GPU 顶点，render 画线+画点 |
+| RenderTexture | renderer/vk_render_texture.cpp | 离屏图像 + framebuffer + ImGui 纹理注册 |
+| VkImGui | renderer/vk_imgui.cpp | ImGui↔Vulkan 接线，Win11 Fluent 风格 |
+| Viewport | ui/viewport.cpp | 持有 RenderTexture + Camera，ImGui::Image 显示 3D |
+| Inspector | ui/inspector.cpp | 模型信息面板（纯 ImGui） |
+| Timeline | ui/timeline.cpp | 时间步控制面板（纯 ImGui） |
+| FileSource | adapter/file_source.cpp | TCL 解析器：识别 node/element 生成 Mesh |
+| Mesh | core/mesh.cpp | 节点坐标 + 单元拓扑 |
+| Model | core/model.cpp | Mesh + 时间步列表 |
 
-## CPU vs GPU 分工
+---
 
+## 如何编译运行
+
+### 环境要求
+- Windows 10/11
+- Visual Studio 2022 (Community 即可)
+- Vulkan SDK 1.4+
+- vcpkg（设 `VCPKG_ROOT` 环境变量）
+
+### 编译
+```bash
+# 1. 安装依赖
+vcpkg install --x-manifest-root=.
+
+# 2. 编译 shader
+cd shaders
+glslc mesh.vert -o mesh.vert.spv
+glslc mesh.frag -o mesh.frag.spv
+glslc line.vert  -o line.vert.spv
+glslc line.frag  -o line.frag.spv
+
+# 3. VS 打开文件夹 → 选 CMake preset "default" → Build
 ```
-CPU（你写的 C++）：                   GPU（shader + 固定硬件）：
-─────────────────────                ──────────────────────────
-分配显存（buffer）                    读 buffer 拿数据
-拷数据进显存（upload）                 顶点 × 矩阵 = 屏幕坐标
-录指令（vkCmd*）                      三角形 → 像素（光栅化）
-交指令纸（submit）                    算像素颜色（fragment shader）
-等完成（fence）                       写 swapchain image
-                                     展示（present）
-```
+
+### 运行
+F5 启动 → File → Open Model... → 选 example/exam1/simple.tcl → 显示杆系结构
+
+---
+
+## 后续开发方向
+
+| 优先级 | 任务 | 涉及文件 |
+|--------|------|---------|
+| 1 | 文件选择对话框 | app.cpp |
+| 2 | set/expr 变量支持 | file_source.cpp |
+| 3 | 深度缓冲（模型前后遮挡） | vk_context.cpp, vk_pipeline.cpp |
+| 4 | 纹理尺寸随窗口调整 | viewport.cpp |
+| 5 | 时间步动画 | timeline.cpp, app.cpp |
+| 6 | 应力云图 | contour.frag, vk_mesh_renderer.cpp |
+| 7 | 多视口 | viewport.cpp, app.cpp |
+| 8 | OpenSees 子进程接入 | opensees_source.cpp |
